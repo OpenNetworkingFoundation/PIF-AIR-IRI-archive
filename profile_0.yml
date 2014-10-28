@@ -1,0 +1,24 @@
+################################################################
+#
+# Profile 0: parser + ingress + buffer
+#
+# Uses default AIR metadata
+#
+################################################################
+
+################################################################
+#
+# PROCESSOR LAYOUT
+#
+################################################################
+
+layout:
+  type : processor_layout
+  doc  : "The layout specification for the switch instance"
+  port_count : 4 # This doesn't really belong here
+  format : list
+  implementation :
+    - parser
+    - ingress_flow
+    - tm_queues
+

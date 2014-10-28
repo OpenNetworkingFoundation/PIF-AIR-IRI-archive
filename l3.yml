@@ -1,0 +1,255 @@
+################################################################
+#
+# A very simple IR instance for L3, no VLAN
+#
+################################################################
+
+ethernet :
+  type : header
+  doc : "The L2 header"
+  fields :
+    - dst_mac : 48
+    - src_mac : 48
+    - ethertype : 16
+
+# No options support
+ipv4 :
+  type : header
+  doc : "An IPv4 header"
+  fields :
+    - version : 4
+    - ihl : 4
+    - diff_serve : 8
+    - total_length : 16
+    - identification : 16
+    - flags : 3
+    - fragment_offset : 13
+    - ttl : 8
+    - protocol : 8
+    - header_checksum : 16
+    - src : 32
+    - dst : 32
+
+udp :
+  type : header
+  doc : "A UDP header"
+  fields :
+    - srcPort : 16
+    - dstPort : 16
+    - length : 16
+    - checksum : 16
+
+tcp :
+  type : header
+  doc : "A TCP header"
+  fields :
+    - srcPort : 16
+    - dstPort : 16
+    - seqNo : 32
+    - ackNo : 32
+    - dataOffset : 4
+    - res : 3
+    - ecn : 3
+    - ctrl : 6
+    - window : 16
+    - checksum : 16
+    - urgentPtr : 16
+
+route_md : # Routing metadata
+  type : metadata
+  doc : "Metadata related to routing"
+  fields :
+    - next_hop_idx : 16
+
+intrinsic_metadata : # Standard AIR metadata
+  type : metadata
+  doc : "Metadata which has special meaning for the switch's operation"
+  fields :
+    - ingress_port : 16
+    - egress_specification : 32
+    - egress_port : 16
+    - egress_instance : 16
+
+
+################################################################
+#
+# PARSE GRAPH
+#
+################################################################
+
+ethernet_p :
+  type : parse_state
+  doc : "Parse state for ethernet"
+  extracts :
+    - ethernet
+  select_value :
+    - ethernet.ethertype
+
+ip4_p :
+  type : parse_state
+  doc : "Parse state for first IPv4 header"
+  extracts :
+    - ipv4
+  select_value :
+    - ipv4.protocol
+
+udp_p :
+  type : parse_state
+  doc : "Parse state for UDP header"
+  extracts :
+    - udp
+
+tcp_p :
+  type : parse_state
+  doc : "Parse state for TCP header"
+  extracts :
+    - tcp
+    
+parser :
+  type : parser
+  doc : "Implementation of primary parser"
+  format : dot
+  start_state : ethernet_p
+  implementation : >-
+    digraph {
+      ethernet_p -> ip4_p [value="0x0800"]
+      ip4_p -> udp_p [value=6]
+      ip4_p -> tcp_p [value=17]
+    }
+
+################################################################
+#
+# ACTIONS
+#
+################################################################
+
+ipv4_route_a :
+  type : action
+  doc : "Do L3 routing"
+  format : action_set
+  parameter_list :
+    - src_mac
+    - dst_mac
+    - egress_spec
+  implementation : >-
+    modify_field(ethernet.src_mac, src_mac);
+    modify_field(ethernet.dst_mac, dst_mac);
+    modify_field(intrinsic_metadata.egress_specification, egress_spec);
+    add_to_field(ipv4.ttl, -1);
+
+
+################################################################
+#
+# TABLES
+#
+################################################################
+
+host_route :
+  type : table
+  doc : "Look for specific IPv4 dest"
+  match_on :
+    ipv4.dst_addr : exact
+
+lpm_route :
+  type : table
+  doc : "Look for route based on LPM (or any ternary match)"
+  match_on :
+    ipv4.dst_addr : ternary
+
+
+################################################################
+#
+# CONTROL FLOW GRAPH
+#
+################################################################
+
+ingress_flow :
+  type : control_flow
+  doc : "The control flow for ingress"
+  format : dot
+  implementation : >-
+    digraph {
+      host_route -> lpm_route [action=miss]
+      host_route -> exit_control_flow [action=hit]
+      lpm_route -> exit_control_flow [action=hit]
+    }
+
+
+################################################################
+#
+# TRAFFIC MANAGER
+#
+################################################################
+
+tm_queues :
+  type : traffic_manager
+  doc : "The central traffic manager"
+  queues_per_port : 8
+  dequeue_discipline : strict
+
+
+################################################################
+#
+# Table initialization
+#
+# - <table>               # table to which to add entry
+#     match_values :      # Map of field refs to values
+#     match_masks :       # Optional map for ternary matches
+#     action :            # Name of action to use
+#     action_params :     # Map of parameter name to value
+#
+# If no match is specified, it is added as a default entry
+#
+################################################################
+
+
+# Route data
+route_1 : &route_1
+  src_mac : 0x7777
+  dst_mac : 0x8888
+  egress_spec : 2
+
+route_2 : &route_2
+  src_mac : 0x7777
+  dst_mac : 0x9999
+  egress_spec : 3
+
+route_3 : &route_3
+  src_mac : 0x7777
+  dst_mac : 0xaaaa
+  egress_spec : 1
+
+route_4 : &route_4
+  src_mac : 0x7777
+  dst_mac : 0xbbbb
+  egress_spec : 2
+
+
+table_initialization :
+  - host_route :
+      match_values :
+        ipv4.dst_addr : 0xc0a80001
+      action : ipv4_route_a
+      action_params : *route_1
+  - host_route :
+      match_values :
+        ipv4.dst_addr : 0xc0a80002
+      action : ipv4_route_a
+      action_params : *route_2
+  - lpm_route :
+      match_values :
+        ipv4.dst_addr : 0xc0a80000
+      match_masks :
+        ipv4.dst_addr : 0xffff0000
+      action : ipv4_route_a
+      action_params : *route_3
+  - lpm_route :
+      match_values :
+        ipv4.dst_addr : 0x0a000000
+      match_masks :
+        ipv4.dst_addr : 0xff000000
+      action : ipv4_route_a
+      action_params : *route_3
+  - lpm_route : # Default
+      action : ipv4_route_a
+      action_params : *route_4

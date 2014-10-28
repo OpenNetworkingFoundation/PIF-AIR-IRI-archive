@@ -1,0 +1,46 @@
+
+* Implement more parser test cases
+* Test cases for action evaluation
+* Add support for metadata header initialization
+* Support tcam priorities in table entry list
+* Support hashed lookups in table 
+* Support "packet-in"
+* Support delete by match-lookup
+* Control interface for table add/remove entries; thrift?
+* Better support/handling that differentiates between asserts and exceptions
+* Support time stamp as parameter for instance packet processing interface
+
+Decide if action parameter lists could have attributes; if so, need
+to change the check in action.py for eval.
+
+Exceptions to consider:
+PacketMod               Some error trying to modify a packet
+HeaderExists:           Attempt to add a header that was already present
+HeaderStackOverflow:    Attempted to add an entry to a header stack
+                        that was full
+HeaderStackUnderflow:   Attempt to remove an entry from a header stack
+                        that was empty
+Parser*Error:           Recognize various parser errors
+
+
+DEFERRED:
+
+Consider the idea of an _anchor_ in parsing. This would be an
+attribute of a parse state. The anchor indicates a position in the
+packet. Adding a header could refer to an anchor (as well as before
+or after). Could support "pre-anchor" (mark before the header instance)
+or "post-anchor" (mark after the header instance). The idea of an 
+anchor is, for example, to indicate the L3/L4 boundary. This means
+multiple header instances may refer to the same anchor. Need to deal
+with the case that the same anchor is marked twice (exception?)
+
+Consider support for some kind of header order specification. Then can
+decouple "add header" from before/after. Part of the argument is that
+in some cases, will not want to couple knowledge of how headers are
+ordered with the fact that you want to add a header.
+
+Support both "add_header" and "add_header_before" semantics. This 
+requires supporting both a notion of "default" or static ordering
+of headers as well as dynamic ordering.
+
+Could support selection of next processor as attribute of packet

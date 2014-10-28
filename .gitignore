@@ -1,0 +1,6 @@
+*.pyc
+*~
+/.coverage
+/htmlcov
+/unit_test.log
+/doc

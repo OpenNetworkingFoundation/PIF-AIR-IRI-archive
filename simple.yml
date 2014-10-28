@@ -1,0 +1,232 @@
+################################################################
+#
+# A very simple IR instance
+#
+# Ethernet and VLAN headers only
+#
+# Map VLAN to VNI
+#
+# Apply switching based on dest MAC address
+#
+# ACL table allows drop or rewrite of dest MACs
+#
+################################################################
+
+ethernet :
+  type : header
+  doc : "The L2 header"
+  fields :
+    - dst_mac : 48
+    - src_mac : 48
+    - ethertype : 16
+
+vlan_tag :
+  type : header
+  doc : "The inner VLAN tag instance"
+  fields :
+    - pri : 3
+    - cfi : 1
+    - vlan_id : 12
+    - ethertype : 16
+
+pkt_md : # General metadata
+  type : metadata
+  doc : "General metadata for the packet"
+  fields :
+    - vni : 16 # Virtual network instance identifier
+
+intrinsic_metadata : # Standard AIR metadata
+  type : metadata
+  doc : "Metadata whose semantics are determined by the machine"
+  fields :
+    - ingress_port : 16
+    - egress_specification : 32
+    - egress_port : 16
+    - egress_instance : 16
+
+
+################################################################
+#
+# PARSE GRAPH
+#
+################################################################
+
+ethernet_p :
+  type : parse_state
+  doc : "Parse state for ethernet"
+  extracts :
+    - ethernet
+  select_value :
+    - ethernet.ethertype
+
+vlan_p :
+  type : parse_state
+  doc : "Parse state for vlan tag"
+  extracts :
+    - vlan_tag
+    
+parser :
+  type : parser
+  doc : "Implementation of primary parser"
+  format : dot
+  start_state : ethernet_p
+  implementation : >-
+    digraph {
+      ethernet_p -> vlan_p [value="0x8100"]
+      ethernet_p -> vlan_p [value="0x9100"]
+    }
+
+
+################################################################
+#
+# ACTIONS
+#
+################################################################
+
+set_vni_a :
+  type : action
+  doc : "Set the VNI in metadata"
+  format : action_set
+  parameter_list :
+    - vni_id
+  implementation : >-
+    modify_field(pkt_md.vni, vni_id);
+
+set_egress_a:
+  type : action
+  doc : "Set the destination for the packet"
+  format : action_set
+  parameter_list :
+    - egress_spec
+  implementation : >-
+    modify_field(intrinsic_metadata.egress_specification, egress_spec);
+
+drop_pkt_a:
+  type : action
+  doc : "Drop the packet"
+  format : action_set
+  implementation : >-
+    drop()
+
+set_dst_mac_a:
+  type : action
+  doc : "Rewrite the destination MAC addr"
+  format : action_set
+  implementation : >-
+    drop()
+
+################################################################
+#
+# TABLES
+#
+################################################################
+
+vni :
+  type : table
+  doc : "Map VLAN to VNI"
+  match_on :
+    vlan_tag.vlan_id : ternary
+    ethenet.src_mac : ternary
+
+forward :
+  type : table
+  doc : "Forward based on L2 dest addr"
+  match_on :
+    pkt_md.vni : exact
+    ethenet.dst_mac : exact
+
+acl :
+  type : table
+  doc : "Perform ACL operations"
+  match_on :
+    pkt_md.vni : exact
+    ethenet.dst_mac : exact
+    ethenet.src_mac : exact
+
+
+################################################################
+#
+# CONTROL FLOW GRAPH
+#
+################################################################
+
+ingress_flow :
+  type : control_flow
+  doc : "The control flow for ingress"
+  format : dot
+  implementation : >-
+    digraph {
+      vni -> forward [action=set_vni_a]
+      forward -> exit_control_flow [action=set_egress_a]
+      forward -> exit_control_flow [action=drop_pkt_a]
+    }
+
+egress_flow :
+  type : control_flow
+  doc : "The control flow for egress"
+  format : dot
+  implementation : >-
+    digraph {
+      acl -> exit_control_flow [action=set_dst_mac_a]
+      acl -> exit_control_flow [action=drop_pkt_a]
+    }
+
+
+################################################################
+#
+# TRAFFIC MANAGER
+#
+################################################################
+
+tm_queues :
+  type : traffic_manager
+  doc : "The central traffic manager"
+  queues_per_port : 8
+  dequeue_discipline : strict
+
+
+
+
+################################################################
+#
+# Table initialization
+#
+# - <table>               # table to which to add entry
+#     match_values :      # Map of field refs to values
+#     match_masks :       # Optional map for ternary matches
+#     action :            # Name of action to use
+#     action_params :     # Map of parameter name to value
+#
+# If no match is specified, it is added as a default entry
+#
+################################################################
+
+table_initialization :
+  - vni :
+      match_values :
+        vlan_tag.vlan_id : 10
+        ethernet.src_mac : 20
+      action : set_vni_a
+      action_params :
+        vni_id : 30
+  - vni : # Default action
+      action : set_vni_a
+      action_params :
+        vni_id : 0xffff
+  - forward :
+      match_values :
+        pkt_md.vni : 30
+        ethernet.dst_mac : 40
+      action : set_egress_a
+      action_params :
+        egress_spec : 2
+  - forward : # Default
+      action : set_egress_a
+      action_params :
+        egress_spec : 3
+  - acl : # default
+      match_values :
+        mkt_md.vni : 0xffff
+        ethernet.dst_mac : 0x0102030405
+        ethennet.src_mac : 0x060708090a
+      action : drop_pkt_a

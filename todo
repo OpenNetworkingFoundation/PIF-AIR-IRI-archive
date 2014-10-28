@@ -1,0 +1,7 @@
+
+* Support "packet-in"
+* Support command line specification of switch initialization routine
+* Support command line specification of packet-in handler
+* Consider run time reconfiguration of AIR specification
+* Support a run time switch monitor
+* Add support for specifying ports on the command line (more VPI support)

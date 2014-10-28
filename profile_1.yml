@@ -1,0 +1,29 @@
+################################################################
+#
+# Profile 1: parser + ingress_flows + buffer + egress_flows
+#
+# Uses default AIR metadata
+#
+################################################################
+
+################################################################
+# PROCESSOR LAYOUT
+#
+# This determines how the processing nodes are connected
+#
+# Format is 'list' (only supported version). 'dot' may be
+# supported in the future
+#
+################################################################
+
+layout:
+  type : processor_layout
+  doc  : "The layout specification for the switch instance"
+  port_count : 4 # This doesn't really belong here
+  format : list
+  implementation :
+    - parser
+    - ingress_flow
+    - tm_queues
+    - egress_flow
+
