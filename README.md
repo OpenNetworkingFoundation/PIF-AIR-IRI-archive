@@ -138,7 +138,7 @@ Run the IRI Switch
 
 - Start the switch
   - cd air_iri
-  - START_YML=l3.yml make start
+  - make start-l3
 
 You should see output like the following.
 
