@@ -3,3 +3,4 @@
 /.coverage
 /htmlcov
 /unit_test.log
+/output

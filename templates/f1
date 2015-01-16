@@ -1,0 +1,8 @@
+:: # Template code
+
+:: for name, value in air_objects.items():
+::     if value["type"] == "table":
+Table ${name}
+::     #endif
+:: #endfor
+
