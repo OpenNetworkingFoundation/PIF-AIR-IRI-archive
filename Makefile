@@ -45,6 +45,9 @@ start: submodule
 start-l3: submodule
 	sudo ${PYPATH} ./start.py -v profile_0.yml l3.yml
 
+templates: submodule
+	./templates.py simple.yml profile_1.yml
+
 # Run some comprehensive test case and show the coverage
 cov:
 	sudo ${PYPATH} coverage run ./start.py --run_for=${COV_SECONDS} -v ${START_YML}
