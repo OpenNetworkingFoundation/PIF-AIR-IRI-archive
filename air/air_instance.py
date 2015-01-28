@@ -24,6 +24,7 @@ class AirInstance(object):
     as processors
     @param air_object_map Map from top level AIR objects to attribute maps
     @param external_object_map Map from non-AIR objects to attribute maps
+    @param loaded_files A list of the files that have been loaded.
 
     Build the Python maps directly derived from the YAML structures.
 
@@ -51,16 +52,20 @@ class AirInstance(object):
         self.air_processor_types = []
         self.air_attrs = {}
         self.air_object_map = {}
+        self.loaded_files = []
+        self.files_to_load = []
         self.external_object_map = {}
+        meta_yaml_name = air_meta_yaml
         if not air_meta_yaml:
             # Try to load from local file meta.yml
             try:
                 local_dir = os.path.dirname(os.path.abspath(__file__))
-                air_meta_yaml = open(local_dir + "/air_meta.yml", "r")
+                meta_yaml_name = local_dir + "/air_meta.yml"
+                air_meta_yaml = open(meta_yaml_name, "r")
             except Exception, e:
-                air_fatal_error("Could not open default metalanguage file air_meta.yml: %s" % str(e.args))
+                air_fatal_error("Could not open default metalanguage file %s: %s" % (meta_yaml_name, str(e.args)))
         try:
-            self.process_yaml(yaml.load(air_meta_yaml))
+            self.process_yaml(meta_yaml_name, yaml.load(air_meta_yaml))
         except AirValidationError, e:
             air_fatal_error("Could not process top level yaml: " + str(e.args))
         if isinstance(air_meta_yaml, file):
@@ -135,16 +140,30 @@ class AirInstance(object):
         """
         self.external_object_map[name] = attrs
 
-    def process_yaml(self, input):
+    def process_load_after_files(self, input_ref, list):
+        for filename in list:
+            # FIXME: Assumes input_ref is a string
+            source_dir = os.path.dirname(os.path.abspath(input_ref))
+            path_file = os.path.join(source_dir, filename)
+            if path_file not in self.loaded_files:
+                if path_file not in self.files_to_load:
+                    logging.debug("Adding file to load %s" % path_file)
+                    self.files_to_load.append(path_file)
+
+    def process_yaml(self, input_ref, yaml_input):
         """
         @brief Add YAML content to the AIR instance
-        @param input The YAML dict to process
+        @param input_ref Reference to where input is from
+        @param yaml_input The YAML dict to process
         @returns Boolean, False if error detected
         """
 
-        for key, val in input.items():
+        logging.info("Processing: " + input_ref)
+        for key, val in yaml_input.items():
             if key in air_meta_keys:
                 self.process_meta(key, val)
+            elif key == "load_after_files":
+                self.process_load_after_files(input_ref, val)
             elif isinstance(val, dict) and "type" in val.keys():
                 self.process_air_object(key, val)
             else:
@@ -175,9 +194,17 @@ class AirInstance(object):
         yaml_input = yaml.load(input_file)
         input_file.close()
         try:
-            self.process_yaml(yaml_input)
+            self.process_yaml(input, yaml_input)
         except AirValidationError, e:
             air_fatal_error("Could not process input file: " + str(e.args))
+
+        logging.debug("Marking %s as loaded" % str(input))
+        self.loaded_files.append(input)
+        if input in self.files_to_load:
+            self.files_to_load.remove(input)
+
+        while len(self.files_to_load) > 0:
+            self.add_content(self.files_to_load[0])
 
 # Current test just instantiates an instance
 if __name__ == "__main__":

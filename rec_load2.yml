@@ -1,0 +1,27 @@
+# Test for recursive loading of IRI YAML code
+
+# A field type declaration
+ip_v4_addr_t : &ip_v4_addr_t
+  width : 32
+  endian : big
+  signed : False
+  wooblitz : 17
+  froobelized : True
+
+outer_ipv4 :
+  type : header
+  doc : "An IPv4 header"
+  fields :
+    - version : 4
+    - ihl : 4
+    - diff_serve : 8
+    - total_length : 16
+    - identification : 16
+    - flags : 3
+    - fragment_offset : 13
+    - ttl : 8
+    - protocol : 8
+    - header_checksum : 16
+    - src : *ip_v4_addr_t
+    - dst : *ip_v4_addr_t
+    - options : (ihl * 32) - 160

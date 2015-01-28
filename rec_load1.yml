@@ -1,0 +1,15 @@
+# Test for recursive loading of IRI YAML code
+
+
+load_after_files :
+  - rec_load2.yml
+  - rec_load3.yml
+
+
+outer_ethernet :
+  type : header
+  doc : "Outer L2 header"
+  fields :
+    - dst_mac : 48
+    - src_mac : 48
+    - ethertype : 16

@@ -14,6 +14,12 @@
 #   
 ################################################################
 
+# TODO: Currently load add'l files after current file
+# Want to support "pre-loading" files.
+load_after_files :
+  - rec_load1.yml
+  - rec_load3.yml
+
 # Can use anchors and references for typing
 
 # A set of fields for a header
@@ -86,22 +92,6 @@ udp :
     - length : 16
     - checksum : 16
 
-
-tcp :
-  type : header
-  doc : "A TCP header"
-  fields :
-    - srcPort : 16
-    - dstPort : 16
-    - seqNo : 32
-    - ackNo : 32
-    - dataOffset : 4
-    - res : 3
-    - ecn : 3
-    - ctrl : 6
-    - window : 16
-    - checksum : 16
-    - urgentPtr : 16
 
 mpls :
   type : header
