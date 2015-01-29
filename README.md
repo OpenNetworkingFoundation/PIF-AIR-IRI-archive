@@ -26,6 +26,37 @@ Here is a high level diagram showing how AIR and IRI relate.
 
 ![AIR and IRI](img/air_arch_web.png)
 
+
+
+Default AIR metalanguage
+------------
+
+The following types are defined in air_meta.yml.  
+
+TODO: Only a few of these are documented currently.
+
+- value_set : A run time managed container of values that may
+be referenced, for example, by parser states for checking if a
+select value is in a given set.
+- value_map : A run time managed container that is implemented
+as a key-value map.
+- table :
+  - match_on : A map from field references to match types (exact,
+ternary, valid, lpm) which forms the key for the table lookup.
+  - allowed_actions : This attribute is ignored by AIR and IRI currently,
+but allows the protocol designer to call out the actions that are allowed
+to be referenced by entries in this table.
+- header
+- metadata
+- action
+- parse_state
+- parser
+- control_flow
+- traffic_manager
+- processor_layout
+
+
+
 IRI
 ===
 
@@ -162,4 +193,23 @@ You should see output like the following.
   - You can do this by running the basic OFTest instance
   - cd air_iri/submodules/oftest
   - sudo ./oft pktact.PacketOnly --verbose
+
+
+Roadmap
+========
+
+This is an unorganized list of things to work on going forward
+
+- Controller interface
+  - Support OpenFlow interface
+  - Generate table update APIs
+  - Expose table update APIs through Thrift
+- Manifest: A manifest would be a list of files that should
+be aggregated into a single YAML input before being processed.
+This would centralize the control and order of file inclusion
+and replace the need for processing "include", "import" or
+"require" directives in the source files themselves. 
+- Templating for output. There is currently a templates branch
+which has some initial code for processing tenjin template
+files.
 
