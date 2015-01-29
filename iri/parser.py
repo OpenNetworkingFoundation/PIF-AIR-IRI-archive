@@ -63,10 +63,16 @@ class Parser(Processor):
             attrs = edge.get_attributes()
             if "value" in attrs:
                 val_str = attrs["value"].strip("'\"")
-                value = int(val_str, 0)
-                self.transitions[src_state][value] = dst_state
-                logging.debug("%s to %s on 0x%x (%d)" %
-                              (src_state, dst_state, value, value))
+                # TODO: Add support for value sets here with "in" and "not in"
+                if val_str == "default":
+                    self.transitions[src_state]["default"] = dst_state
+                    logging.debug("%s to %s, default" %
+                                  (src_state, dst_state))
+                else:
+                    value = int(val_str, 0)
+                    self.transitions[src_state][value] = dst_state
+                    logging.debug("%s to %s on 0x%x (%d)" %
+                                  (src_state, dst_state, value, value))
 
     def process(self, parsed_packet, state=None):
         """
@@ -102,6 +108,8 @@ class Parser(Processor):
                 select_value = parsed_packet.get_field(fld_ref)
                 if select_value in self.transitions[state_name].keys():
                     state_name = self.transitions[state_name][select_value]
+                elif "default" in self.transitions[state_name].keys():
+                    state_name = self.transitions[state_name]["default"]
                 else:
                     break
             else: # Terminal state
@@ -138,11 +146,19 @@ if __name__ == "__main__":
 
     parser = iri.iri_parser["parser"]
 
+    # Test cases for unit test input
     byte_buf = bytearray(range(100))
     ppkt = ParsedPacket(byte_buf, {})
     parser.process(ppkt)
-    air_assert(ppkt.header_length == 14, "Did not parser ether hdr")
-    air_assert("ethernet" in ppkt.header_map.keys(), "Did not parser ether hdr")
+
+    if "ethernet" in iri.header.keys():
+        air_assert(ppkt.header_length == 14, "Did not parser ether hdr")
+        air_assert("ethernet" in ppkt.header_map.keys(),
+                   "Did not parser ether hdr")
+        air_assert(ppkt.get_field("ethernet"),
+                   "Failed ethernet header valid check")
+        air_assert(not ppkt.get_field("foo"),
+                   "Failed negative foo header valid check")
 
     byte_buf[12] = 0x81
     byte_buf[13] = 0
@@ -151,6 +167,8 @@ if __name__ == "__main__":
     if "ethernet" in iri.header.keys():
         air_assert("ethernet" in ppkt.header_map.keys(),
                    "Did not parser ether hdr")
+        air_assert(ppkt.get_field("ethernet"),
+                   "Failed ethernet header valid check")
         if "vlan_tag_outer" in iri.header.keys():
             air_assert(ppkt.header_length == 18, "Did not parser ether+vlan hdr")
             air_assert("vlan_tag_outer" in ppkt.header_map.keys(), 
