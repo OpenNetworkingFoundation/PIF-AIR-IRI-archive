@@ -136,10 +136,16 @@ class ParsedPacket(object):
         """
         @brief Get a field from this parsed packet
         @param field_ref Reference to a field of the form hdr_name.fld_name
+
+        If field_ref is the name of a header, then this will return
+        the "valid" state of the header.
         """
+
         try:
             (hdr, fld) = field_ref.split(".")
         except ValueError:
+            if field_ref in self.header_map.keys():
+                return True # This is a valid header reference
             return None
 
         if hdr in self.header_map.keys():
