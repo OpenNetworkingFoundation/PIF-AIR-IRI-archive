@@ -125,17 +125,22 @@ class Pipeline(Processor):
             # @FIXME Apply action to the packet
 
             current_table_name = "exit_control_flow"
-            if not hit:
+            if "always" in transitions.keys():
+                current_table_name = transitions["always"]
+
+            elif not hit:
                 if "miss" in transitions.keys():
                     current_table_name = transitions["miss"]
                 elif action and action in transitions.keys():
                     current_table_name = transitions[action]
-                                  
+
             else: # Hit
                 if action in transitions.keys(): 
                     current_table_name = transitions[action]
                 elif "hit" in transitions.keys():
                     current_table_name = transitions["hit"]
+                elif "default" in transition.keys():
+                    current_table_name = transitions["default"]
 
         logging.debug("Pipeline %s, pkt %d: calling to %s",
                       self.name, parsed_packet.id, self.next_processor.name)

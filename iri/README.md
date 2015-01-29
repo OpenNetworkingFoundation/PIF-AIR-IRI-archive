@@ -167,3 +167,8 @@ Future: The layout description may be extended to support conditional
 transitions. In this case, the connection of processors may be
 represented with a graph, just as `parser` and `control_flow` objects.
 
+Currently, in the control flow transition specifications, action=identifier,
+the special identifiers "hit", "miss", "always" and "default" are supported.
+The values "hit" and "miss" correspond to whether or not a hit occurred in 
+the table. The value "always" takes precedence if it is present. The value
+"default" will be used if no other transition is specified.
