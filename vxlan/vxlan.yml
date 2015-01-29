@@ -123,6 +123,7 @@ encap :
   doc : "Add a VXLAN header if going to an encap port"
   match_on :
     intrinsic_metadata.egress_port : exact
+    # FIXME: This should support more params for selecting the encap
   allowed_actions :
     - encap_vxlan_a
 
