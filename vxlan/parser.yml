@@ -1,0 +1,132 @@
+################################################################
+#
+# Parse states for VXLAN example
+#
+################################################################
+
+# To be implemented
+vxlan_ports :
+  type : value_set
+  doc : "The set of ports which are VXLAN interfaces; managed at runtime"
+
+port_check_p :
+  type : parse_state
+  doc : "Initial parse state determines VXLAN or not from in port"
+  select_value : intrinsic_metadata.ingress_port
+
+outer_ethernet_p :
+  type : parse_state
+  doc : "Parse state for ethernet"
+  extracts :
+    - outer_ethernet
+  select_value :
+    - outer_ethernet.ethertype
+
+outer_vlan_p :
+  type : parse_state
+  doc : "Parse state for VLAN tag"
+  extracts :
+    - outer_vlan_tag
+  select_value :
+    - outer_vlan_tag.ethertype
+
+outer_ip4_p :
+  type : parse_state
+  doc : "Parse state for first IPv4 header"
+  extracts :
+    - outer_ipv4
+  select_value :
+    - outer_ipv4.protocol
+
+outer_udp_p :
+  type : parse_state
+  doc : "Parse state for UDP header"
+  extracts :
+    - outer_udp
+  select_value :
+    - outer_udp.dst_port
+
+vxlan_p :
+  type : parse_state
+  doc : "Parse state for VXLAN header"
+  extracts :
+    - vxlan
+  select_value :  # Ignored
+    - vxlan.vni
+
+inner_ethernet_p :
+  type : parse_state
+  doc : "Parse state for ethernet"
+  extracts :
+    - inner_ethernet
+  select_value :
+    - inner_ethernet.ethertype
+
+inner_vlan_p :
+  type : parse_state
+  doc : "Parse state for VLAN tag"
+  extracts :
+    - inner_vlan_tag
+  select_value :
+    - inner_vlan_tag.ethertype
+
+inner_ip4_p :
+  type : parse_state
+  doc : "Parse state for first IPv4 header"
+  extracts :
+    - inner_ipv4
+  select_value :
+    - inner_ipv4.protocol
+
+inner_udp_p :
+  type : parse_state
+  doc : "Parse state for UDP header"
+  extracts :
+    - inner_udp
+  select_value :
+    - inner_udp.dst_port
+
+inner_tcp_p :
+  type : parse_state
+  doc : "Parse state for TCP header"
+  extracts :
+    - inner_tcp
+
+
+################################################################
+#
+# PARSE GRAPH
+#
+# Currently, this is comical as the "encap" ports are hard
+# wired into the parser. Adding full support for 'value_set'
+# in the parser will fix this.
+#
+# The digraph with vxlan_ports as a value set will include:
+#
+#  port_check_p -> outer_ethernet_p [value="in vxlan_ports"]
+#  port_check_p -> inner_ethernet_p [value="not in vxlan_ports"]
+#
+################################################################
+
+parser :
+  type : parser
+  doc : "Parser for VXLAN example"
+  format : dot
+  start_state : port_check_p
+  implementation : >-
+    digraph {
+      port_check_p -> outer_ethernet_p [value=1]
+      port_check_p -> outer_ethernet_p [value=2]
+      port_check_p -> inner_ethernet_p [value="default"]
+      outer_ethernet_p -> outer_ip4_p [value="0x0800"]
+      outer_ethernet_p -> outer_vlan_p [value="0x8100"]
+      outer_vlan_p -> outer_ip4_p [value="0x0800"]
+      outer_ip4_p -> outer_udp_p [value=6]
+      outer_udp_p -> vxlan_p [value=4789]
+      vxlan_p -> inner_ethernet_p [value="default"]
+      inner_ethernet_p -> inner_ip4_p [value="0x0800"]
+      inner_ethernet_p -> inner_vlan_p [value="0x8100"]
+      inner_vlan_p -> inner_ip4_p [value="0x0800"]
+      inner_ip4_p -> inner_udp_p [value=6]
+      inner_ip4_p -> inner_tcp_p [value=17]
+    }

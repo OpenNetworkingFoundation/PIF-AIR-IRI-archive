@@ -1,0 +1,160 @@
+################################################################
+#
+# Header declarations for VXLAN
+#
+################################################################
+
+
+# Field lists for various headers
+# These are declared once and then referenced by * when
+# header instances are declared.
+
+ethernet_fields : &ethernet_fields
+  - dst_mac : 48
+  - src_mac : 48
+  - ethertype : 16
+
+vlan_fields : &vlan_fields
+    - pri : 3
+    - cfi : 1
+    - vlan_id : 12
+    - ethertype : 16
+
+vxlan_fields : &vxlan_fields
+    - flags : 8 # Should be set to 0x8 for I flag
+    - reserved1 : 24
+    - vni : 24
+    - reserved2 : 8
+
+ipv4_fields : &ipv4_fields
+    - version : 4
+    - ihl : 4
+    - diff_serve : 8
+    - total_length : 16
+    - identification : 16
+    - flags : 3
+    - fragment_offset : 13
+    - ttl : 8
+    - protocol : 8
+    - header_checksum : 16
+    - src : 32
+    - dst : 32
+
+ipv6_fields : &ipv6_fields
+    - version : 4
+    - traffic_class : 8
+    - flow_label : 20
+    - total_length : 16
+    - next_header : 8
+    - hop_limit : 8
+    - src : 128
+    - dst : 128
+
+udp_fields : &udp_fields
+    - src_port : 16
+    - dst_port : 16
+    - length : 16
+    - checksum : 16
+
+tcp_fields : &tcp_fields
+    - srcPort : 16
+    - dstPort : 16
+    - seqNo : 32
+    - ackNo : 32
+    - dataOffset : 4
+    - res : 3
+    - ecn : 3
+    - ctrl : 6
+    - window : 16
+    - checksum : 16
+    - urgentPtr : 16
+
+################################################################
+#
+# Outer header instances
+#
+################################################################
+
+outer_ethernet :
+  type : header
+  doc : "The outer L2 header"
+  fields : *ethernet_fields
+
+# outer_vlan_tag :
+#   type : header
+#   doc : "The inner VLAN tag instance"
+#   fields : *vlan_fields
+
+vxlan :
+  type : header
+  doc : "The VXLAN tag"
+  fields : *vxlan_fields
+
+outer_ipv4 :
+  type : header
+  doc : "An IPv4 header"
+  fields : *ipv4_fields
+
+# outer_ipv6 :
+#   type : header
+#   doc : "An IPv6 header"
+#   fields : *ipv6_fields
+
+outer_udp :
+  type : header
+  doc : "A UDP header"
+  fields : *udp_fields
+
+
+################################################################
+#
+# Inner header instances
+#
+################################################################
+
+inner_ethernet :
+  type : header
+  doc : "The Inner L2 header"
+  fields : *ethernet_fields
+
+inner_vlan_tag :
+  type : header
+  doc : "The inner VLAN tag instance"
+  fields : *vlan_fields
+
+inner_ipv4 :
+  type : header
+  doc : "An IPv4 header"
+  fields : *ipv4_fields
+
+inner_tcp :
+  type : header
+  doc : "A TCP header"
+  fields :
+
+inner_udp :
+  type : header
+  doc : "A UDP header"
+  fields : *udp_fields
+
+
+################################################################
+#
+# Metadata
+#
+################################################################
+
+pkt_md : # General metadata
+  type : metadata
+  doc : "General metadata for the packet"
+  fields :
+    - vni : 24 # Virtual network instance identifier
+
+intrinsic_metadata : # Standard AIR metadata
+  type : metadata
+  doc : "Metadata whose semantics are determined by the machine"
+  fields :
+    - ingress_port : 16 # Valid from parsing on
+    - egress_specification : 32
+    - egress_port : 16 # Only valid in egress flow
+    - egress_instance : 16 # Only valid in egress flow

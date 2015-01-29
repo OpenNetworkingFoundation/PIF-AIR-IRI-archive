@@ -32,6 +32,8 @@ test:
 	${PYPATH} iri/parser.py ${UNIT_TEST_LOG} profile_0.yml l3.yml
 	${PYPATH} iri/pipeline.py ${UNIT_TEST_LOG}
 
+	${PYPATH} iri/parser.py ${UNIT_TEST_LOG} vxlan/*.yml profile_1.yml
+
 doc:
 	cd doc && doxygen
 	cp -r img doc/html/
@@ -44,6 +46,9 @@ start: submodule
 
 start-l3: submodule
 	sudo ${PYPATH} ./start.py -v profile_0.yml l3.yml
+
+start-vxlan: submodule
+	sudo ${PYPATH} ./start.py -v profile_1.yml vxlan/*.yml
 
 # Run some comprehensive test case and show the coverage
 cov:
