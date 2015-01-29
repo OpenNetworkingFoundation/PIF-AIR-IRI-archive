@@ -17,6 +17,8 @@
 ---
 # These are the recognized top level IR object types
 air_types :
+  - value_set
+  - value_map
   - table
   - header
   - metadata
@@ -42,6 +44,7 @@ graph_attributes : &graph_attributes
 air_attributes :
   table :
     - match_on
+    - allowed_actions
   header :
     - fields
     - max_depth # If present and > 1, this is a header stack
