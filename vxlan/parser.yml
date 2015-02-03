@@ -117,13 +117,13 @@ parser :
     digraph {
       port_check_p -> outer_ethernet_p [value=1]
       port_check_p -> outer_ethernet_p [value=2]
-      port_check_p -> inner_ethernet_p [value="default"]
+      port_check_p -> inner_ethernet_p
       outer_ethernet_p -> outer_ip4_p [value="0x0800"]
       outer_ethernet_p -> outer_vlan_p [value="0x8100"]
       outer_vlan_p -> outer_ip4_p [value="0x0800"]
       outer_ip4_p -> outer_udp_p [value=6]
       outer_udp_p -> vxlan_p [value=4789]
-      vxlan_p -> inner_ethernet_p [value="default"]
+      vxlan_p -> inner_ethernet_p
       inner_ethernet_p -> inner_ip4_p [value="0x0800"]
       inner_ethernet_p -> inner_vlan_p [value="0x8100"]
       inner_vlan_p -> inner_ip4_p [value="0x0800"]
