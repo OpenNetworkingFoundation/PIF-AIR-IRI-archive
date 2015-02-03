@@ -104,7 +104,7 @@ inner_tcp_p :
 # The digraph with vxlan_ports as a value set will include:
 #
 #  port_check_p -> outer_ethernet_p [value="in vxlan_ports"]
-#  port_check_p -> inner_ethernet_p [value="not in vxlan_ports"]
+#  port_check_p -> inner_ethernet_p # This is the default; local port
 #
 ################################################################
 
@@ -115,8 +115,7 @@ parser :
   start_state : port_check_p
   implementation : >-
     digraph {
-      port_check_p -> outer_ethernet_p [value=1]
-      port_check_p -> outer_ethernet_p [value=2]
+      port_check_p -> outer_ethernet_p [in_value_set=vxlan_ports]
       port_check_p -> inner_ethernet_p
       outer_ethernet_p -> outer_ip4_p [value="0x0800"]
       outer_ethernet_p -> outer_vlan_p [value="0x8100"]

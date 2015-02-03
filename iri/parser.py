@@ -98,7 +98,7 @@ class ParserStateTransition(object):
             value = int(val_str, 0)
             self.value_map[value] = next_state
 
-            logging.debug("Parser: %s to %s on value 0x%x (%d)" %
+            logging.debug("Parser transition: %s to %s, equal to 0x%x (%d)" %
                           (self.name, next_state, value, value))
             return
             
@@ -110,7 +110,7 @@ class ParserStateTransition(object):
                                             % set_name)
             # assert set_name not in self.in_value_sets
             self.in_value_sets[set_name] = next_state
-            logging.debug("Parser: %s to %s val set %s" %
+            logging.debug("Parser transition: %s to %s, value in set %s" %
                           (self.name, next_state, set_name))
             return
 
@@ -122,12 +122,12 @@ class ParserStateTransition(object):
                                             % set_name)
             # assert set_name not in self.not_in_value_sets
             self.not_in_value_sets[set_name] = next_state
-            logging.debug("Parser: %s to %s negative val set %s" %
+            logging.debug("Parser transition: %s to %s, value not in set %s" %
                           (self.name, next_state, set_name))
             return
 
         else: # Default state
-            logging.debug("Parser: default transition %s to %s" %
+            logging.debug("Parser transition: %s to %s, default" %
                           (self.name, next_state))
             self.default = next_state
             
