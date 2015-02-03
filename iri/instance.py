@@ -87,6 +87,8 @@ class IriInstance(AirInstance):
         self.port_count = self.air_object_map["layout"]["port_count"]
 
         # Create the IRI objects: parsers, actinos, tables, pipelines and TMs
+        self.iri_value_set = {}
+        self.iri_value_map = {}
         self.iri_parser = {}
         self.iri_action = {}
         self.iri_table = {}
@@ -95,9 +97,15 @@ class IriInstance(AirInstance):
         self.processors = {}
         self.transmit_processor = TransmitProcessor(transmit_handler)
 
+        for name, val in self.value_set.items():
+            self.iri_value_set[name] = [] # Just use a list
+
+        for name, val in self.value_map.items():
+            self.iri_value_map[name] = {} # Just use a dict
+
         for name, val in self.parser.items():
             self.iri_parser[name] = Parser(name, val, self.parse_state,
-                                           self.header)
+                                           self.header, self.value_set)
             self.processors[name] = self.iri_parser[name]
         for name, val in self.action.items():
             self.iri_action[name] = Action(name, val)

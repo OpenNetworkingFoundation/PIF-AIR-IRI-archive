@@ -133,6 +133,16 @@ intrinsic_metadata : # Standard AIR metadata
 #
 ################################################################
 
+host_ports :
+  type : value_set
+  doc : "The set of local ports"
+
+port_check_p :
+  type : parse_state
+  doc : "Port check parse state"
+  select_value :
+    - intrinsic_metadata.ingress_port
+
 ethernet_p :
   type : parse_state
   doc : "Parse state for ethernet"
@@ -149,7 +159,7 @@ vlan_p :
   select_value :
     - vlan_tag_outer.ethertype
 
-ip4_p :
+ipv4_p :
   type : parse_state
   doc : "Parse state for first IPv4 header"
   extracts :
@@ -176,11 +186,13 @@ parser :
   start_state : ethernet_p
   implementation : >-
     digraph {
+      port_check_p -> ethernet_p [in_value_set=host_ports]
+      port_check_p -> ipv4_p [not_in_value_set=host_ports]
       ethernet_p -> vlan_p [value="0x8100"]
-      ethernet_p -> ip4_p [value="0x0800"]
-      vlan_p -> ip4_p [value="0x0800"]
-      ip4_p -> udp_p [value=6]
-      ip4_p -> tcp_p [value=17]
+      ethernet_p -> ipv4_p [value="0x0800"]
+      vlan_p -> ipv4_p [value="0x0800"]
+      ipv4_p -> udp_p [value=6]
+      ipv4_p -> tcp_p [value=17]
     }
 
 ################################################################
