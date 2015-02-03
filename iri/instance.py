@@ -122,20 +122,20 @@ class IriInstance(AirInstance):
 
         # Plumb the layout
         layout = self.air_object_map["layout"]
-        air_assert(layout["format"] == "list", "Layout is not a list")
-        layout_procs = layout["implementation"]
-        air_assert(isinstance(layout_procs, list), 
+        air_assert(layout["format"] == "list", "Unsupported layout: not a list")
+        layout_name_list = layout["implementation"]
+        air_assert(isinstance(layout_name_list, list), 
                    "Layout implementation is not a list")
 
-        proc_count = len(layout_procs)
-        for idx, processor_name in enumerate(layout_procs):
+        proc_count = len(layout_name_list)
+        for idx, processor_name in enumerate(layout_name_list):
             cur_proc = self.processors[processor_name]
             if idx == 0:
                 logging.debug("Layout: First processor %s" % cur_proc.name)
                 self.first_processor = cur_proc
 
             if idx < proc_count - 1:
-                next_proc = self.processors[layout_procs[idx + 1]]
+                next_proc = self.processors[layout_name_list[idx + 1]]
                 cur_proc.next_processor = next_proc
             else: # Last one connects to transmit processor
                 cur_proc.next_processor = self.transmit_processor

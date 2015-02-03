@@ -17,27 +17,36 @@ from processor import Processor
 
 class ParserStateTransition(object):
     """
-    Holds and manages the transition information for a parser state
+    @brief Holds and manages the transition information for a parser state
+
+    @param value_map Map from specific values to next parser states
     @param all_value_sets Map from name to reference for all value sets
     @param in_value_sets Map from value_set name to next state for
     select values in the given value set
     @param not_in_value_sets Map from value_set name to next state for
     select values not in the given value set
 
-    Function next_state: Return the next state (from this one) given
-    the indicated select value.
+    The primary interface is the function next_state: Given a select_value
+    for a packet, and assuming the state machine is in "this" state,
+    return the next parser state
     """
 
     def __init__(self, src_state_name, all_edges, all_value_sets):
         """
-        Create an parse state for the given source state
+        @brief Create an parse state for the given source state
+        @param src_state_name Name of this state
+        @param all_edges The dot graph object for all edges in the parser
+        @param all_value_sets The map of references for all value sets
+
+        Iterates thru the parser edges and processes those that have
+        "this" (src_state_name) as the source.
         """
         self.name = src_state_name
         self.default = None
-        self.values = {}
+        self.value_map = {}
         self.all_value_sets = all_value_sets
         self.in_value_sets = {}
-        self.not_value_sets = {}
+        self.not_in_value_sets = {}
 
         for edge in all_edges:
             if src_state_name == edge.get_source():
@@ -46,7 +55,16 @@ class ParserStateTransition(object):
     def next_state(self, select_value):
         """
         @brief Given the select value, return the next state
+
+        This implements the priority of the state transition
+        decision. Specific values are used first, then value sets
+        (in no particular order) then negative value sets (in
+        no particular order). If none of those match, then a
+        default state is returned (which may be None).
         """
+
+        if select_value is None:
+            return self.default
 
         # Is specific value specified in 
         if select_value in self.value_map.keys():
@@ -78,10 +96,10 @@ class ParserStateTransition(object):
         if "value" in attrs:
             val_str = attrs["value"].strip("'\"")
             value = int(val_str, 0)
-            self.values[value] = next_state
+            self.value_map[value] = next_state
 
             logging.debug("Parser: %s to %s on value 0x%x (%d)" %
-                          (src_state, dst_state, value, value))
+                          (self.name, next_state, value, value))
             return
             
         # Is a "in_value_set" given for the transition?
@@ -92,20 +110,25 @@ class ParserStateTransition(object):
                                             % set_name)
             # assert set_name not in self.in_value_sets
             self.in_value_sets[set_name] = next_state
+            logging.debug("Parser: %s to %s val set %s" %
+                          (self.name, next_state, set_name))
             return
 
         # Is a "not_in_value_set" given for the transition?
         if "not_in_value_set" in attrs:
-            set_name = attrs["in_value_set"].strip("'\"")
+            set_name = attrs["not_in_value_set"].strip("'\"")
             if not set_name in self.all_value_sets.keys():
                 raise IriReferenceError("Parser: unknown value set %s" 
                                             % set_name)
             # assert set_name not in self.not_in_value_sets
             self.not_in_value_sets[set_name] = next_state
+            logging.debug("Parser: %s to %s negative val set %s" %
+                          (self.name, next_state, set_name))
             return
 
         else: # Default state
-            logging.debug("%s to %s, default" % (src_state, dst_state))
+            logging.debug("Parser: default transition %s to %s" %
+                          (self.name, next_state))
             self.default = next_state
             
 class Parser(Processor):
@@ -118,14 +141,14 @@ class Parser(Processor):
     @param value_sets The map for all value sets
 
     @todo Support explicit error indications
-    @todo Should we just pass the IRI instance object in?
+    @todo Should we just pass the IRI instance object in for init?
     """
     def __init__(self, name, air_parser_attrs, all_parser_states,
                  headers, all_value_sets):
         logging.info("Creating parser " + name)
 
         self.name = name
-        self.parser_states = parser_states
+        self.parser_states = all_parser_states
         self.headers = headers
         self.all_value_sets = all_value_sets
         self.air_parser_attrs = air_parser_attrs
@@ -141,22 +164,19 @@ class Parser(Processor):
         # Some of this should move to the validator
         logging.debug("Processing parse graph for " + self.graph.get_name())
         all_edges = self.graph.get_edge_list()
-        for state in all_parser_states:
-            self.transitions[src_state] = ParserStateTransition(
-                state, all_edges, all_value_sets)
+        for state_name in all_parser_states:
+            self.transitions[state_name] = ParserStateTransition(
+                state_name, all_edges, all_value_sets)
                 
     def process(self, parsed_packet, state=None):
         """
         @brief Apply this parser to the given packet
-        @param parsed_packet The packet to parse
+        @param parsed_packet The packet to parse, a parsed packet instance
         @param state The parse state to start at
 
-        If the packet is a raw packet, create a new parsed packet instance.
+        The parsed packet object tracks the "current offest", etc.
 
-        If offset is not 0, the block between 0 and offset will be added
-        to the parse list as a byte-string block.
-
-        @FIXME Support multiple cases for a given state
+        @TODO Support explicit transitions to control flows.
         """
 
         air_check(isinstance(parsed_packet, ParsedPacket), IriParamError)
@@ -165,12 +185,12 @@ class Parser(Processor):
 
         logging.debug("Parser: pkt id %d" % parsed_packet.id)
         state_name = self.first_state_name
-        while state_name and state_name in self.transitions.keys():
-            logging.debug("Parser: state %s" % state_name)
+        while state_name:
+            logging.debug("Parser: In state %s" % state_name)
             state_attrs = self.parser_states[state_name]
             transitions = self.transitions[state_name]
             next_state = None
-            select_value = 0
+            select_value = None
 
             if "extracts" in state_attrs.keys():
                 for hdr_name in state_attrs["extracts"]:
@@ -181,9 +201,8 @@ class Parser(Processor):
                 # @todo Use eval in combination with field value subs
                 fld_ref = state_attrs["select_value"][0]
                 select_value = parsed_packet.get_field(fld_ref)
-                if trans:
-                    next_state = transitions.next_state(select_value)
 
+            next_state = transitions.next_state(select_value)
             logging.debug("Parser trans from %s to %s on value %s" %
                           (state_name, str(next_state), str(select_value)))
             state_name = next_state
