@@ -1,0 +1,11 @@
+:: # Template code
+
+:: for name, value in air_objects.items():
+::     if value["type"] == "table":
+Table ${name}
+  type: ${value["type"]}
+  doc: ${value["doc"]}
+  match-on: ${value["match_on"]}
+::     #endif
+:: #endfor
+
