@@ -37,8 +37,6 @@ class Switch(Thread):
         logging.info("Starting IRI Switch instance %s" % name)
         self.name = name
         self.input = input
-        if isinstance(input, list):
-            self.input = " ".join(input)
         self.dataplane = dataplane
         self.killed = False
         self.instance = IriInstance(name, input, dataplane.send)
