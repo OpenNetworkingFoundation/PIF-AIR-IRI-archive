@@ -160,7 +160,7 @@ Set Up The Data Plane
 
 - Create veth ports
   - cd air_iri
-  - sudo tool/veth_setup.sh
+  - sudo tools/veth_setup.sh
 
 Note: Support for Virtual Port Interfaces will be coming
 
